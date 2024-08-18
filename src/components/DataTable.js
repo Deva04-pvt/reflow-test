@@ -1,118 +1,95 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-// Simulated data fetch (Replace this with your actual API call)
-const fetchData = async () => {
-  return [
-    {
-      serialNo: 1,
-      readings: 23,
-      calibratedReadings: 22,
-      readingsLevel: 75,
-      status: "Online",
-    },
-    {
-      serialNo: 2,
-      readings: 30,
-      calibratedReadings: 29,
-      readingsLevel: 50,
-      status: "Offline",
-    },
-    {
-      serialNo: 3,
-      readings: 45,
-      calibratedReadings: 44,
-      readingsLevel: 90,
-      status: "Online",
-    },
-  ];
-};
-
 const DataTable = () => {
   const [data, setData] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const columns = [
-    { key: "serialNo", label: "Serial No" },
-    { key: "readings", label: "Readings" },
-    { key: "calibratedReadings", label: "Calibrated Readings" },
-    { key: "readingsLevel", label: "Readings Level" },
-    { key: "status", label: "Status" },
-  ];
-
   useEffect(() => {
-    const getData = async () => {
-      const result = await fetchData();
-      setData(result);
+    const fetchData = async () => {
+      try {
+        const response = await fetch("/api/mqtt-output");
+        const result = await response.json();
+
+        // Map received data to the correct format
+        const formattedData = [
+          {
+            serialNo: 1,
+            readings: result[0]?.CH1 || "N/A",
+            calibratedReadings: result[0]?.CalibratedValue1 || "N/A",
+            status: result[0]?.ERR1 === 1 ? "Online" : "Offline",
+          },
+          {
+            serialNo: 2,
+            readings: result[0]?.CH2 || "N/A",
+            calibratedReadings: result[0]?.CalibratedValue2 || "N/A",
+            status: result[0]?.ERR2 === 1 ? "Online" : "Offline",
+          },
+          {
+            serialNo: 3,
+            readings: result[0]?.CH3 || "N/A",
+            calibratedReadings: result[0]?.CalibratedValue3 || "N/A",
+            status: result[0]?.ERR3 === 1 ? "Online" : "Offline",
+          },
+        ];
+
+        setData(formattedData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
     };
-    getData();
+
+    fetchData();
+
+    // Optionally, set an interval to fetch data periodically
+    const intervalId = setInterval(fetchData, 5000);
+
+    // Cleanup on component unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
-    <div className="w-full h-full p-4 bg-gray-100">
-      <div className="bg-white border-2 border-black rounded-3xl overflow-hidden flex">
+    <div className="w-full h-full ">
+      <div className="bg-white border-2 border-black rounded-3xl overflow-hidden flex flex-col h-full">
         {/* Table Section */}
         <div className="flex-grow">
           <table className="min-w-full bg-[#F0F0F0] border-collapse border-black">
             <thead className="bg-black text-white">
               <tr>
-                {columns.map((column, index) => (
-                  <th
-                    key={column.key}
-                    className={`px-4 py-6 text-center ${
-                      index === 0 ? "border-l-0" : ""
-                    } ${
-                      index === columns.length - 1 ? "border-r-2" : "border-r-2"
-                    } border-white`}
-                  >
-                    {column.label}
-                  </th>
-                ))}
+                <th className="px-4 py-6 text-center border-white">
+                  Serial No
+                </th>
+                <th className="px-4 py-6 text-center border-white">Readings</th>
+                <th className="px-4 py-6 text-center border-white">
+                  Calibrated Readings
+                </th>
+                <th className="px-4 py-6 text-center border-white">Status</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((row, index) => (
-                <tr key={index} className="border-b-2 border-black">
-                  {columns.map((column, colIndex) => (
-                    <td
-                      key={column.key}
-                      className={`px-4 py-6 text-center ${
-                        colIndex === 0 ? "border-l-0" : ""
-                      } ${
-                        colIndex === columns.length - 1
-                          ? "border-r-2"
-                          : "border-r-2"
-                      } border-black ${
-                        column.key === "status" ? "text-black" : "text-black"
-                      }`}
-                      style={{
-                        backgroundColor:
-                          column.key === "status"
-                            ? row[column.key] === "Online"
-                              ? "#148815"
-                              : "#f93737"
-                            : "inherit",
-                      }}
-                    >
-                      {column.key === "readingsLevel" ? (
-                        <div className="relative">
-                          <div
-                            className="absolute top-0 left-0 bg-blue-500 h-full rounded-full"
-                            style={{
-                              width: `${row[column.key]}%`,
-                              height: "100%",
-                            }}
-                          ></div>
-                          <div className="bg-gray-200 h-4 w-full rounded-full"></div>
-                        </div>
-                      ) : column.key === "status" ? (
-                        row[column.key]
-                      ) : (
-                        row[column.key]
-                      )}
-                    </td>
-                  ))}
+              {data.map((row) => (
+                <tr
+                  key={row.serialNo}
+                  className="border-b-2 text-black border-black"
+                >
+                  <td className="px-4 py-6 text-center border-black text-black">
+                    {row.serialNo}
+                  </td>
+                  <td className="px-4 py-6 text-center text-black border-black">
+                    {row.readings}
+                  </td>
+                  <td className="px-4 py-6 text-center text-black border-black">
+                    {row.calibratedReadings}
+                  </td>
+                  <td
+                    className="px-4 py-6 text-center text-black border-black"
+                    style={{
+                      color: row.status === "Online" ? "#148815" : "#f93737",
+                    }}
+                  >
+                    {row.status}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -120,11 +97,11 @@ const DataTable = () => {
         </div>
 
         {/* Export Section */}
-        <div className="w-64 flex flex-col bg-[#F0F0F0] border-l-1 border-black">
+        <div className="p-4 flex flex-col bg-[#F0F0F0] border-t-1 border-black">
           <div className="bg-black text-white text-center py-6 font-bold border-b-1 border-black">
             Export Data
           </div>
-          <div className="p-4 flex flex-col h-full">
+          <div className="p-4 flex flex-col">
             <div className="mb-4">
               <label className="block text-gray-700">Start Date:</label>
               <input
@@ -150,6 +127,14 @@ const DataTable = () => {
             </button>
           </div>
         </div>
+      </div>
+      <div className="flex flex-row gap-20 justify-evenly m-20">
+        <button className="w-full py-2 bg-gray-900 text-white rounded-3xl ">
+          Add New Device
+        </button>
+        <button className="w-full py-2 bg-gray-900 text-white rounded-3xl ">
+          View All Projects
+        </button>
       </div>
     </div>
   );
